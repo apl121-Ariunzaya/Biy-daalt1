@@ -1,0 +1,149 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+
+int readInts(const char *prompt, int values[], int count) {
+    char line[128];
+
+    while (1) {
+        printf("%s", prompt);
+
+        if (fgets(line, sizeof(line), stdin) == NULL) {
+            return 0;  // Оролт дууссан
+        }
+
+        // Мөр багтаагүй бол үлдсэнийг уншаад буруу оролт гэж үзнэ.
+        if (strchr(line, '\n') == NULL && !feof(stdin)) {
+            int ch;
+            while ((ch = getchar()) != '\n' && ch != EOF) {
+                /* Мөрийн үлдсэн хэсгийг арилгана */
+            }
+            printf("Оролт хэт урт байна. Дахин оруулна уу.\n");
+            continue;
+        }
+
+        char *p = line;
+        int valid = 1;
+
+        for (int i = 0; i < count; i++) {
+            while (isspace((unsigned char)*p)) {
+                p++;
+            }
+
+            errno = 0;
+            char *end;
+            long value = strtol(p, &end, 10);
+
+            if (p == end || errno == ERANGE ||
+                value < INT_MIN || value > INT_MAX) {
+                valid = 0;
+                break;
+            }
+
+            values[i] = (int)value;
+            p = end;
+        }
+
+        while (isspace((unsigned char)*p)) {
+            p++;
+        }
+
+        // Тоо дутуу, буруу форматтай эсвэл илүү утгатай эсэхийг шалгана.
+        if (!valid || *p != '\0') {
+            printf("Буруу оролт байна. Зөвхөн бүхэл тоо оруулна уу.\n");
+            continue;
+        }
+
+        return 1;
+    }
+}
+
+int main(void) {
+    int n;
+    int values[4];
+    int maxMinutes = -1;
+    int maxCarNo = 0;
+
+    while (1) {
+        if (!readInts(
+                "Өдөрт үйлчилсэн машины тоог оруулна уу (дор хаяж 5): ",
+                &n, 1)) {
+            return 1;
+        }
+
+        if (n >= 5) {
+            break;
+        }
+
+        printf("Алдаа: Машины тоо дор хаяж 5 байх ёстой.\n");
+    }
+
+    printf("\n--- МАШИНУУДЫН ЗОГСООЛЫН ТӨЛБӨРИЙН ХҮСНЭГТ ---\n");
+    printf("%-10s %-15s %-15s %-15s %-10s\n",
+           "№", "Орсон цаг", "Гарсан цаг", "Зогссон (мин)", "Төлбөр (₮)");
+    printf("-----------------------------------------------------------------\n");
+
+    for (int i = 1; i <= n; i++) {
+        int hIn, mIn, hOut, mOut;
+
+        while (1) {
+            char prompt[160];
+            snprintf(prompt, sizeof(prompt),
+                     "%d-р машины орсон цаг, минут болон гарсан цаг, минут "
+                     "(ж: 8 30 10 15): ",
+                     i);
+
+            if (!readInts(prompt, values, 4)) {
+                return 1;
+            }
+
+            hIn = values[0];
+            mIn = values[1];
+            hOut = values[2];
+            mOut = values[3];
+
+            if (hIn >= 0 && hIn <= 23 &&
+                hOut >= 0 && hOut <= 23 &&
+                mIn >= 0 && mIn <= 59 &&
+                mOut >= 0 && mOut <= 59) {
+                break;
+            }
+
+            printf("Буруу цаг эсвэл минут байна. Цаг 0–23, минут 0–59 байх ёстой.\n");
+        }
+
+        int inTotalM = hIn * 60 + mIn;
+        int outTotalM = hOut * 60 + mOut;
+        int parkedMinutes;
+
+        if (outTotalM >= inTotalM) {
+            parkedMinutes = outTotalM - inTotalM;
+        } else {
+            parkedMinutes = (24 * 60 - inTotalM) + outTotalM;
+        }
+
+        int fee = 0;
+
+        if (parkedMinutes > 30) {
+            int extraMinutes = parkedMinutes - 30;
+            fee = ((extraMinutes + 29) / 30) * 1000;
+        }
+
+        printf("%-10d %02d:%02d          %02d:%02d          %-15d %-10d\n",
+               i, hIn, mIn, hOut, mOut, parkedMinutes, fee);
+
+        if (parkedMinutes > maxMinutes) {
+            maxMinutes = parkedMinutes;
+            maxCarNo = i;
+        }
+    }
+
+    printf("-----------------------------------------------------------------\n");
+    printf("Хамгийн удаан зогссон машин: %d-р машин (%d минут)\n",
+           maxCarNo, maxMinutes);
+
+    return 0;
+}
